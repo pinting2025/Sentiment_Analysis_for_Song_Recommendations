@@ -37,35 +37,113 @@ class ChromaDBManager:
             print(f"Created new collection: {COLLECTION_NAME}")
         return collection
     
-    def add_songs(self, ids: List[str], embeddings: List[List[float]], metadatas: List[Dict]):
-        """Add songs to the collection."""
-        try:
-            # Normalize embeddings
-            normalized_embeddings = [
-                (np.array(emb) / np.linalg.norm(emb)).tolist()
-                for emb in embeddings
-            ]
+    def add_song(
+        self,
+        song_id: str,
+        embedding: List[float],
+        metadata: Dict
+    ) -> bool:
+        """
+        Add a single song to the ChromaDB collection.
+        
+        Args:
+            song_id (str): Unique identifier for the song
+            embedding (List[float]): Normalized embedding vector
+            metadata (Dict): Song metadata
             
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
             self.collection.upsert(
-                ids=ids,
-                embeddings=normalized_embeddings,
-                metadatas=metadatas
+                ids=[song_id],
+                embeddings=[embedding],
+                metadatas=[metadata]
             )
-            print(f"Added {len(ids)} songs to ChromaDB")
+            return True
         except Exception as e:
-            print(f"Error adding songs to ChromaDB: {e}")
-            raise
+            print(f"Error adding song to ChromaDB: {e}")
+            return False
+    
+    def add_song_with_lyrics(
+        self,
+        song_id: str,
+        title: str,
+        artist: str,
+        lyrics: str,
+        artist_genre: str = "Unknown",
+        artist_popularity: int = 0,
+        song_popularity: int = 0,
+        release_date: Optional[str] = None
+    ) -> bool:
+        """
+        Add a single song with lyrics to the ChromaDB collection.
+        
+        Args:
+            song_id (str): Unique identifier for the song
+            title (str): Song title
+            artist (str): Artist name
+            lyrics (str): Song lyrics
+            artist_genre (str): Artist genre
+            artist_popularity (int): Artist popularity score (0-100)
+            song_popularity (int): Song popularity score (0-100)
+            release_date (Optional[str]): Song release date
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Generate embedding for lyrics
+            from src.database.embeddings import EmbeddingGenerator
+            embedding_generator = EmbeddingGenerator()
+            embedding = embedding_generator.get_embedding(lyrics)
+            
+            if embedding is None:
+                print("Failed to generate embedding for lyrics")
+                return False
+            
+            # Normalize embedding
+            embedding = embedding / np.linalg.norm(embedding)
+            
+            # Prepare metadata
+            metadata = {
+                "title": str(title),
+                "artist": str(artist),
+                "artist_genre": str(artist_genre),
+                "artist_popularity": int(artist_popularity),
+                "song_popularity": int(song_popularity),
+                "release_date": str(release_date) if release_date else "Unknown",
+                "lyrics": str(lyrics[:1000])  # Store first 1000 chars for reference
+            }
+            
+            # Add to collection
+            return self.add_song(
+                song_id=song_id,
+                embedding=embedding.tolist(),
+                metadata=metadata
+            )
+            
+        except Exception as e:
+            print(f"Error adding song to ChromaDB: {e}")
+            return False
     
     def get_song(self, song_id: str) -> Optional[Dict]:
         """Get a song's embedding and metadata from ChromaDB."""
         try:
+            # Get the song from the collection
             result = self.collection.get(ids=[song_id])
-            if result and result['ids']:
-                return {
-                    'embedding': result['embeddings'][0],
-                    'metadata': result['metadatas'][0]
-                }
-            return None
+            
+            # Check if we got any results
+            if not result or not result.get('ids') or not result.get('embeddings') or not result.get('metadatas'):
+                print(f"Song {song_id} not found in ChromaDB")
+                return None
+                
+            # Return the song data
+            return {
+                'embedding': result['embeddings'][0],
+                'metadata': result['metadatas'][0]
+            }
+            
         except Exception as e:
             print(f"Error getting song {song_id} from ChromaDB: {e}")
             return None
@@ -78,9 +156,6 @@ class ChromaDBManager:
     ) -> Dict:
         """Find similar songs using vector similarity search."""
         try:
-            # Normalize query embedding
-            query_embedding = (np.array(query_embedding) / np.linalg.norm(query_embedding)).tolist()
-            
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
