@@ -1,9 +1,27 @@
-# Database
-sqlalchemy>=2.0.0
-alembic>=1.12.0
-
-# Environment and configuration
+# Core dependencies
+SQLAlchemy>=2.0.0
+chromadb>=0.4.0
+transformers>=4.30.0
+torch>=2.0.0
+numpy>=1.24.0
+click>=8.0.0
 python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# API integrations
+google-api-python-client>=2.0.0
+ytmusicapi>=1.0.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+isort>=5.0.0
+flake8>=6.0.0
+
+# Database
+psycopg2-binary==2.9.9
+alembic==1.13.1
 
 # Web framework (for future API development)
 flask>=2.3.0
@@ -13,22 +31,12 @@ flask-migrate>=4.0.5
 
 # API clients
 requests>=2.31.0
-google-api-python-client>=2.108.0
-
-# NLP and sentiment analysis
-nltk>=3.8.1
 textblob>=0.17.1
 vaderSentiment>=3.3.2
-scikit-learn>=1.3.0
-
-# Utilities
+scikit-learn==1.3.2
 pyyaml>=6.0.1
 pandas>=2.1.0
-numpy>=1.26.0
 
 # Security
 bcrypt>=4.0.1
 pyjwt>=2.8.0
-
-# Testing
-pytest>=7.4.2
