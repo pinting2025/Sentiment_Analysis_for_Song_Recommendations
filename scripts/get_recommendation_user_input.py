@@ -3,8 +3,10 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import re
-from typing import Optional
+from typing import Optional, Tuple
 import numpy as np
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # Add the project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -89,6 +91,39 @@ def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
     except Exception as e:
         print(f"Error fetching lyrics: {e}")
         return None
+
+def search_youtube_video(title: str, artist: str) -> Tuple[str, str]:
+    """Search for a song on YouTube and return the first result's title and URL."""
+    try:
+        youtube = build('youtube', 'v3', developerKey=os.getenv('YOUTUBE_API_KEY'))
+        
+        # Create search query
+        search_query = f"{title} {artist}" if artist != "Unknown" else title
+        
+        # Search for the video
+        search_response = youtube.search().list(
+            q=search_query,
+            part='id,snippet',
+            maxResults=1,
+            type='video'
+        ).execute()
+        
+        if not search_response.get('items'):
+            return "No video found", ""
+            
+        video = search_response['items'][0]
+        video_id = video['id']['videoId']
+        video_title = video['snippet']['title']
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        
+        return video_title, video_url
+        
+    except HttpError as e:
+        print(f"An error occurred while searching YouTube: {e}")
+        return "Error searching YouTube", ""
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return "Error", ""
 
 def main():
     """Main function to add a new song to ChromaDB."""
@@ -188,9 +223,9 @@ def main():
                 if results and results.get('ids') and results.get('metadatas'):
                     # Process and display results
                     print("\nRecommended Songs:")
-                    print("-" * 80)
-                    print(f"{'Title':<30} {'Artist':<25} {'Genre':<15} {'Similarity':<10}")
-                    print("-" * 80)
+                    print("-" * 100)
+                    print(f"{'Title':<30} {'Artist':<25} {'Genre':<15} {'Similarity':<10} {'YouTube Link':<20}")
+                    print("-" * 100)
                     
                     for i, (result_id, distance, metadata) in enumerate(zip(
                         results['ids'][0],
@@ -202,8 +237,21 @@ def main():
                             continue
                             
                         similarity_score = 1 - distance
+                        # Search for YouTube video
+                        video_title, video_url = search_youtube_video(
+                            metadata['title'],
+                            metadata['artist']
+                        )
+                        
                         print(f"{metadata['title'][:30]:<30} {metadata['artist'][:25]:<25} "
-                              f"{metadata['artist_genre'][:15]:<15} {similarity_score:.3f}")
+                              f"{metadata['artist_genre'][:15]:<15} {similarity_score:.3f} {video_url}")
+                        
+                        if video_url:
+                            print(f"   YouTube: {video_title}")
+                            print("-" * 100)
+                        else:
+                            print("   No YouTube video found")
+                            print("-" * 100)
                 else:
                     print("No similar songs found in the database.")
                     
