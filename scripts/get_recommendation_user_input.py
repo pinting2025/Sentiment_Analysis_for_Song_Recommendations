@@ -1,12 +1,10 @@
 import sys
 import os
-import requests
-from bs4 import BeautifulSoup
-import re
 from typing import Optional, Tuple
 import numpy as np
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import logging
 
 # Add the project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -14,18 +12,16 @@ sys.path.insert(0, project_root)
 
 from src.database.chroma_db import ChromaDBManager
 from src.utils.config_manager import get_db_session
-from scripts.init_db import Song
+from scripts.init_db import Song, Lyrics, Artist
 from dotenv import load_dotenv
+from src.database.kkbox import KKBOXAPI
+from src.utils.settings import DB_PATH
 
 # Load environment variables
 load_dotenv()
-
-# Get Genius API token
-GENIUS_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
-if not GENIUS_TOKEN:
-    print("Error: Genius API token not found in environment variables.")
-    print("Please set GENIUS_TOKEN in your .env file.")
-    sys.exit(1)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_next_song_id() -> int:
     """Get the next available song ID from the database."""
@@ -40,57 +36,113 @@ def get_next_song_id() -> int:
         session.close()
 
 def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
-    """Fetch lyrics for a song using the Genius API."""
+    """
+    Fetch lyrics for a song using the KKBOX API and update the database
+    
+    Args:
+        title (str): Song title
+        artist (Optional[str]): Artist name
+        
+    Returns:
+        Optional[str]: Lyrics text if found, None otherwise
+    """
+    session = get_db_session()
     try:
+        # First search for YouTube video to get the video ID
+        video_title, video_url = search_youtube_video(title, artist or "Unknown")
+        if not video_url:
+            logger.error("No YouTube video found for this song")
+            return None
+            
+        # Extract video ID from URL
+        video_id = video_url.split('v=')[1] if 'v=' in video_url else ''
+        if not video_id:
+            logger.error("Could not extract YouTube video ID")
+            return None
+            
+        # Initialize KKBOX API
+        kkbox = KKBOXAPI()
+        
         # Search for the song
-        search_url = "https://api.genius.com/search"
-        headers = {"Authorization": f"Bearer {GENIUS_TOKEN}"}
+        kkbox_data = kkbox.search_song(title, artist)
         
-        if artist:
-            query = f"{title} {artist}"
+        if not kkbox_data:
+            logger.error("No results found in KKBOX")
+            return None
+            
+        # Get song details from KKBOX response
+        song_title = kkbox_data.get('name', title)
+        
+        # Extract artist name from KKBOX response - handle nested structure
+        if isinstance(kkbox_data.get('artist'), dict):
+            kkbox_artist_name = kkbox_data['artist'].get('name', artist or 'Unknown Artist')
         else:
-            query = title
+            kkbox_artist_name = artist or 'Unknown Artist'
             
-        params = {"q": query}
+        lyrics_text = kkbox_data.get('lyrics', '')
         
-        response = requests.get(search_url, headers=headers, params=params)
-        if response.status_code != 200:
-            print(f"Genius API search failed: {response.status_code}")
+        if not lyrics_text:
+            logger.error("No lyrics found for this song")
             return None
             
-        search_results = response.json()["response"]["hits"]
-        if not search_results:
-            print("No results found in Genius API")
-            return None
-            
-        # Get the first result's URL
-        song_url = search_results[0]["result"]["url"]
+        # Check if artist exists in database
+        artist_obj = session.query(Artist).filter_by(name=kkbox_artist_name).first()
+        if not artist_obj:
+            # If artist not found, check if there's an artist with the original name
+            if artist == "Unknown Artist" and kkbox_artist_name != "Unknown Artist":
+                artist_obj = session.query(Artist).filter_by(name=artist).first()
+                if artist_obj:
+                    # Update artist name to match KKBOX
+                    artist_obj.name = kkbox_artist_name
+                    logger.info(f"Updated artist name from '{artist}' to '{kkbox_artist_name}'")
+            else:
+                # Create new artist
+                artist_obj = Artist(name=kkbox_artist_name)
+                session.add(artist_obj)
+            session.flush()  # Get the artist_id
         
-        # Scrape the lyrics from the song page
-        page = requests.get(song_url)
-        if page.status_code != 200:
-            print(f"Failed to fetch song page: {page.status_code}")
-            return None
-            
-        soup = BeautifulSoup(page.text, "html.parser")
+        # Check if song exists in database
+        song = session.query(Song).filter_by(
+            title=song_title,
+            artist_id=artist_obj.artist_id
+        ).first()
         
-        # Find the lyrics container
-        lyrics_div = soup.find("div", {"data-lyrics-container": "true"})
-        if not lyrics_div:
-            print("Could not find lyrics container")
-            return None
-            
-        # Extract and clean the lyrics
-        lyrics = lyrics_div.get_text("\n")
-        lyrics = re.sub(r'\[.*?\]', '', lyrics)  # Remove [Verse 1] etc.
-        lyrics = re.sub(r'\n\s*\n', '\n', lyrics)  # Remove extra newlines
-        lyrics = lyrics.strip()
+        if not song:
+            # Create new song if it doesn't exist
+            song = Song(
+                title=song_title,
+                artist_id=artist_obj.artist_id,
+                youtube_id=video_id,  # Use the YouTube video ID we found
+                release_date=None  # Will be updated later with YouTube search
+            )
+            session.add(song)
+            session.flush()  # Get the song_id
         
-        return lyrics
+        # Check if lyrics already exist
+        existing_lyrics = session.query(Lyrics).filter_by(song_id=song.song_id).first()
+        if existing_lyrics:
+            # Update existing lyrics
+            existing_lyrics.lyrics_text = lyrics_text
+            existing_lyrics.source = 'KKBOX'
+        else:
+            # Create new lyrics entry
+            lyrics = Lyrics(
+                song_id=song.song_id,
+                lyrics_text=lyrics_text,
+                source='KKBOX'
+            )
+            session.add(lyrics)
+        
+        session.commit()
+        logger.info(f"Successfully updated lyrics for song: {song_title} by {kkbox_artist_name}")
+        return lyrics_text
         
     except Exception as e:
-        print(f"Error fetching lyrics: {e}")
+        logger.error(f"Error fetching lyrics: {e}")
+        session.rollback()
         return None
+    finally:
+        session.close()
 
 def search_youtube_video(title: str, artist: str) -> Tuple[str, str]:
     """Search for a song on YouTube and return the first result's title and URL."""
@@ -140,8 +192,33 @@ def main():
         
         artist = input("Enter the artist name (optional, press Enter to skip): ").strip() or None
         
-        # Fetch lyrics
+        # Fetch lyrics and get the song ID from SenseYourTune database
         print(f"\nFetching lyrics...")
+        session = get_db_session()
+        try:
+            # First check if song exists in SenseYourTune
+            kkbox_artist_name = artist or "Unknown Artist"
+            existing_song = session.query(Song).join(Artist).filter(
+                Song.title == title,
+                Artist.name == kkbox_artist_name
+            ).first()
+            
+            if existing_song:
+                print(f"\nFound existing song in SenseYourTune with ID: {existing_song.song_id}")
+                # Check if it exists in ChromaDB
+                if chroma_manager.get_song(str(existing_song.song_id)):
+                    print("Song already exists in ChromaDB. Getting recommendations...")
+                    song_id = str(existing_song.song_id)
+                else:
+                    print("Song exists in SenseYourTune but not in ChromaDB. Adding to ChromaDB...")
+                    song_id = str(existing_song.song_id)
+            else:
+                print("Song not found in SenseYourTune. Adding new song...")
+                song_id = str(get_next_song_id())
+        finally:
+            session.close()
+        
+        # Fetch lyrics (this will add/update the song in SenseYourTune)
         lyrics = fetch_lyrics(title, artist)
         
         if not lyrics:
@@ -180,19 +257,12 @@ def main():
             artist_popularity = 0
             song_popularity = 0
         
-        # Get the next available song ID
-        song_id = str(get_next_song_id())
-        
         # Add song to ChromaDB
         success = chroma_manager.add_song_with_lyrics(
             song_id=song_id,
             title=title,
             artist=artist or "Unknown",
-            lyrics=lyrics,
-            artist_genre=artist_genre,
-            artist_popularity=artist_popularity,
-            song_popularity=song_popularity,
-            release_date=release_date if release_date else None
+            lyrics=lyrics
         )
         
         if success:

@@ -40,3 +40,6 @@ pandas>=2.1.0
 # Security
 bcrypt>=4.0.1
 pyjwt>=2.8.0
+
+# Additional dependencies
+beautifulsoup4==4.12.3

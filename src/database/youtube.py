@@ -111,7 +111,7 @@ def get_popular_music_videos(max_results=50, region_code="SG", language="zh_TW")
         language (str, optional): Language code for results. Defaults to "zh_TW" for Traditional Chinese.
     
     Returns:
-        list: List of dictionaries with song information including lyrics
+        list: List of dictionaries with song information
     """
     try:
         # Get popular Chinese songs from YouTube Music
@@ -146,33 +146,13 @@ def get_popular_music_videos(max_results=50, region_code="SG", language="zh_TW")
                     artist_name = snippet.get("channelTitle", "")
                     song_title = snippet.get("title", "")
                 
-                # Get lyrics if available
-                lyrics_text = None
-                lyrics_source = None
-                try:
-                    # Get watch playlist to get lyrics browseId
-                    watch_playlist = ytmusic.get_watch_playlist(videoId=video_id)
-                    if watch_playlist and 'lyrics' in watch_playlist:
-                        lyrics_browse_id = watch_playlist['lyrics']
-                        if lyrics_browse_id:
-                            lyrics_data = ytmusic.get_lyrics(lyrics_browse_id)
-                            if lyrics_data:
-                                lyrics_text = lyrics_data.get('lyrics', '')
-                                lyrics_source = lyrics_data.get('source', 'YouTube Music')
-                except Exception as e:
-                    logger.warning(f"Could not fetch lyrics for {song_title}: {e}")
-                
                 results.append({
-                    "video_id": video_id,
+                    "videoId": video_id,
                     "title": song_title,
-                    "artist_name": artist_name,
-                    "channel_title": snippet.get("channelTitle", ""),
-                    "published_at": snippet.get("publishedAt", ""),
-                    "view_count": int(statistics.get("viewCount", 0)),
-                    "like_count": int(statistics.get("likeCount", 0)),
-                    "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url", ""),
-                    "lyrics_text": lyrics_text,
-                    "lyrics_source": lyrics_source
+                    "channelTitle": artist_name,  # Using artist name as channel title
+                    "publishedAt": snippet.get("publishedAt", ""),
+                    "viewCount": int(statistics.get("viewCount", 0)),
+                    "likeCount": int(statistics.get("likeCount", 0))
                 })
         
         return results

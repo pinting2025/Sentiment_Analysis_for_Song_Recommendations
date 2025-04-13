@@ -5,7 +5,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # Database settings
-DB_PATH = PROJECT_ROOT / "data" / "songs.db"
+DB_PATH = PROJECT_ROOT / "data" / "senseyourtune.db"
 CHROMA_DB_PATH = PROJECT_ROOT / "data" / "chromadb_data"
 
 # ChromaDB settings
@@ -33,5 +33,5 @@ DEVICE = "cuda" if os.environ.get("USE_CUDA", "false").lower() == "true" else "c
 
 # Recommendation settings
 DEFAULT_TOP_K = 5
-DEFAULT_SIMILARITY_WEIGHT = 0.7
-DEFAULT_POPULARITY_WEIGHT = 0.3 
+DEFAULT_SIMILARITY_WEIGHT = 0.8
+DEFAULT_POPULARITY_WEIGHT = 0.2 

@@ -22,12 +22,18 @@ from src.database.youtube import get_popular_music_videos
 from dotenv import load_dotenv
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.utils.settings import DB_PATH
+
+import logging
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
 # Get database URL from environment variable or use a default SQLite database
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///senseyourtune.db")
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 # Create engine
 engine = create_engine(DATABASE_URL, echo=True)
@@ -272,109 +278,80 @@ def convert_youtube_date(date_str):
         print(f"Error parsing date {date_str}: {e}")
         return None
 
-def populate_top_songs(max_songs=10, region_code="SG"):
+def populate_top_songs(session, max_songs=50):
     """
-    Fetch top songs from YouTube and populate the database.
+    Populate the database with top songs from YouTube and their lyrics from KKBOX.
     
     Args:
-        max_songs (int, optional): Maximum number of songs to fetch. Defaults to 10.
-        region_code (str, optional): Region code for localized results. Defaults to "SG".
-    
-    Returns:
-        int: Number of songs added to database
+        session: SQLAlchemy session
+        max_songs (int): Maximum number of songs to fetch
     """
-    print(f"Fetching top {max_songs} Chinese songs from YouTube for region {region_code}...")
-    
-    # Get popular music videos from YouTube
     try:
-        popular_videos = get_popular_music_videos(max_results=max_songs, region_code=region_code, language="zh_TW")
-    except Exception as e:
-        print(f"Error fetching popular videos: {e}")
-        return 0
-    
-    # Get database session
-    session = get_db_session()
-    
-    try:
-        songs_added = 0
+        # Get popular songs from YouTube
+        logger.info("Fetching popular songs from YouTube...")
+        popular_songs = get_popular_music_videos(max_results=max_songs)
         
-        for video in popular_videos:
-            # Extract information
-            video_id = video['video_id']
-            song_title = video['title']
-            artist_name = video['artist_name']
-            # artist_popularity = video['artist_popularity']
-            # artist_genre = video['artist_genre']
-            lyrics_text = video['lyrics_text']
-            lyrics_source = video['lyrics_source']
-            
-            # Check if song already exists
-            existing_song = session.query(Song).filter(Song.youtube_id == video_id).first()
-            if existing_song:
-                print(f"Song already exists in database: {song_title} by {artist_name}")
+        # Initialize KKBOX API
+        from src.database.kkbox import KKBOXAPI
+        kkbox = KKBOXAPI()
+        
+        for song_data in popular_songs:
+            try:
+                # Extract song title and artist name
+                song_title = song_data.get('title', '')
+                artist_name = song_data.get('channelTitle', '')  # Using channelTitle as artist name
+                
+                if not song_title or not artist_name:
+                    logger.warning(f"Skipping song due to missing title or artist: {song_data}")
+                    continue
+                
+                # Search for the song on KKBOX
+                logger.info(f"Searching for lyrics: {song_title} by {artist_name}")
+                kkbox_data = kkbox.search_song(song_title, artist_name)
+                
+                if not kkbox_data:
+                    logger.warning(f"No KKBOX data found for: {song_title} by {artist_name}")
+                    continue
+                
+                # Get or create artist
+                artist = session.query(Artist).filter_by(name=artist_name).first()
+                if not artist:
+                    artist = Artist(name=artist_name)
+                    session.add(artist)
+                    session.flush()  # Get the artist_id
+                
+                # Create song
+                song = Song(
+                    title=song_title,
+                    artist_id=artist.artist_id,
+                    youtube_id=song_data.get('videoId', ''),
+                    popularity=song_data.get('viewCount', 0)
+                )
+                session.add(song)
+                session.flush()  # Get the song_id
+                
+                # Store lyrics if available
+                if kkbox_data.get('lyrics'):
+                    lyrics = Lyrics(
+                        song_id=song.song_id,
+                        lyrics_text=kkbox_data['lyrics'],
+                        source='KKBOX'
+                    )
+                    session.add(lyrics)
+                
+                logger.info(f"Successfully added song: {song_title} by {artist_name}")
+                
+            except Exception as e:
+                logger.error(f"Error processing song {song_data.get('title', '')}: {e}")
                 continue
-            
-            # Check if artist exists, create if not
-            artist = session.query(Artist).filter(Artist.name == artist_name).first()
-            if not artist:
-                print(f"Creating new artist: {artist_name}")
-                artist = Artist(
-                    name=artist_name,
-                    # popularity=artist_popularity,
-                    # genre=artist_genre
-                )
-                session.add(artist)
-                session.flush()
-            
-            # Parse published date
-            release_date = convert_youtube_date(video['published_at'])
-            
-            # Calculate popularity based on view count and like count
-            view_count = video['view_count']
-            like_count = video['like_count']
-            
-            # Calculate popularity score (0-100)
-            popularity = min(100, int(
-                (view_count / 1000000) * 0.7 +  # 0.7 points per million views
-                (like_count / 10000) * 0.3      # 0.3 points per 10,000 likes
-            ))
-            
-            # Create new song
-            print(f"Adding song: {song_title} by {artist_name}")
-            song = Song(
-                title=song_title,
-                artist_id=artist.artist_id,
-                youtube_id=video_id,
-                release_date=release_date,
-                popularity=popularity
-            )
-            session.add(song)
-            session.flush()  # Flush to get song_id
-            
-            # Add lyrics if available
-            if lyrics_text:
-                print(f"Adding lyrics for {song_title}")
-                lyrics = Lyrics(
-                    song_id=song.song_id,
-                    lyrics_text=lyrics_text,
-                    source=lyrics_source
-                )
-                session.add(lyrics)
-            
-            songs_added += 1
         
-        # Commit changes
         session.commit()
-        print(f"Successfully added {songs_added} songs to the database.")
-        return songs_added
-    
+        logger.info("Successfully populated database with top songs and lyrics")
+        
     except Exception as e:
-        print(f"Error populating database: {e}")
+        logger.error(f"Error populating top songs: {e}")
         session.rollback()
-        return 0
-    
-    finally:
-        session.close()
+        raise
 
 def get_all_songs():
     """
@@ -461,7 +438,7 @@ if __name__ == "__main__":
         
         # Call the populate function
         print(f"Populating database with {max_songs} songs...")
-        songs_added = populate_top_songs(max_songs=max_songs, region_code=region_code)
-        print(f"Added {songs_added} songs to the database.")
+        populate_top_songs(session=get_db_session(), max_songs=max_songs)
+        print("Database populated successfully!")
     
     print("Database setup complete!")
