@@ -148,7 +148,7 @@ def get_popular_music_videos(max_results=50, region_code="SG", language="zh_TW")
                 
                 results.append({
                     "videoId": video_id,
-                    "title": song_title,
+                    "title": song_title.split('(')[0].strip(),
                     "channelTitle": artist_name,  # Using artist name as channel title
                     "publishedAt": snippet.get("publishedAt", ""),
                     "viewCount": int(statistics.get("viewCount", 0)),

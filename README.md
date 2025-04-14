@@ -52,37 +52,6 @@ python scripts/init_chroma.py
 python scripts/get_recommendation_user_input.py
 ```
 
-## Project Structure
-
-```
-src/song_recommender/
-├── config/          # Configuration files
-├── database/        # Database models and operations
-├── utils/           # Utility functions
-└── api/             # API endpoints
-```
-
-## Development
-
-1. Install development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-2. Run tests:
-
-```bash
-pytest
-```
-
-3. Format code:
-
-```bash
-black .
-isort .
-```
-
 ## License
 
 MIT License - see LICENSE file for details

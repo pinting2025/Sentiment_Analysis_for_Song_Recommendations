@@ -10,7 +10,7 @@ import logging
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.database.chroma_db import ChromaDBManager
+from src.database.chroma_db import ChromaManager
 from src.utils.config_manager import get_db_session
 from scripts.init_db import Song, Lyrics, Artist
 from dotenv import load_dotenv
@@ -49,7 +49,7 @@ def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
     session = get_db_session()
     try:
         # First search for YouTube video to get the video ID
-        video_title, video_url = search_youtube_video(title, artist or "Unknown")
+        video_title, video_url = search_youtube_video(title, artist or "Unknown Artist")
         if not video_url:
             logger.error("No YouTube video found for this song")
             return None
@@ -75,9 +75,9 @@ def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
         
         # Extract artist name from KKBOX response - handle nested structure
         if isinstance(kkbox_data.get('artist'), dict):
-            kkbox_artist_name = kkbox_data['artist'].get('name', artist or 'Unknown Artist')
+            artist_name = kkbox_data['artist'].get('name', artist or 'Unknown Artist')
         else:
-            kkbox_artist_name = artist or 'Unknown Artist'
+            artist_name = artist or 'Unknown Artist'
             
         lyrics_text = kkbox_data.get('lyrics', '')
         
@@ -86,19 +86,10 @@ def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
             return None
             
         # Check if artist exists in database
-        artist_obj = session.query(Artist).filter_by(name=kkbox_artist_name).first()
+        artist_obj = session.query(Artist).filter_by(name=artist_name).first()
         if not artist_obj:
-            # If artist not found, check if there's an artist with the original name
-            if artist == "Unknown Artist" and kkbox_artist_name != "Unknown Artist":
-                artist_obj = session.query(Artist).filter_by(name=artist).first()
-                if artist_obj:
-                    # Update artist name to match KKBOX
-                    artist_obj.name = kkbox_artist_name
-                    logger.info(f"Updated artist name from '{artist}' to '{kkbox_artist_name}'")
-            else:
-                # Create new artist
-                artist_obj = Artist(name=kkbox_artist_name)
-                session.add(artist_obj)
+            artist_obj = Artist(name=artist_name)
+            session.add(artist_obj)
             session.flush()  # Get the artist_id
         
         # Check if song exists in database
@@ -134,7 +125,7 @@ def fetch_lyrics(title: str, artist: Optional[str] = None) -> Optional[str]:
             session.add(lyrics)
         
         session.commit()
-        logger.info(f"Successfully updated lyrics for song: {song_title} by {kkbox_artist_name}")
+        logger.info(f"Successfully updated lyrics for song: {song_title} by {artist_name}")
         return lyrics_text
         
     except Exception as e:
@@ -177,159 +168,96 @@ def search_youtube_video(title: str, artist: str) -> Tuple[str, str]:
         print(f"An unexpected error occurred: {e}")
         return "Error", ""
 
-def main():
-    """Main function to add a new song to ChromaDB."""
+def recommend(chroma_manager, song_id: str, lyrics: Optional[str] = None):
     try:
-        # Initialize ChromaDB manager
-        chroma_manager = ChromaDBManager()
-        
-        # Get song title and optional artist from user
+        from src.database.embeddings import EmbeddingGenerator
+        embedding_generator = EmbeddingGenerator()
+        if lyrics:
+            embedding = embedding_generator.get_embedding(lyrics)
+        else:
+            song_data = chroma_manager.get_song(song_id)
+            if not song_data:
+                print("Song embedding not found.")
+                return
+            embedding = song_data['embedding']
+
+        embedding = embedding / np.linalg.norm(embedding)
+        results = chroma_manager.find_songs_by_similarity(query_embedding=embedding, top_k=20)
+
+        print("\nRecommended Songs:")
+        print("-" * 100)
+        print(f"{'Title':<30} {'Artist':<25} {'Similarity':<10} {'YouTube Link':<20}")
+        print("-" * 100)
+
+        count = 0
+        for song in results:
+            if song['song_id'] == song_id:
+                continue
+            if count >= 5:
+                break
+            similarity_score = song['similarity_score']
+            video_title, video_url = search_youtube_video(song['title'], song['artist'])
+            print(f"{song['title'][:30]:<30} {song['artist'][:25]:<25} {similarity_score:.3f} {video_url}")
+            if video_url:
+                print(f"   YouTube: {video_title}\n{'-' * 100}")
+            else:
+                print("   No YouTube video found\n" + "-" * 100)
+            count += 1
+
+    except Exception as e:
+        print(f"Error getting recommendations: {e}")
+
+def main():
+    try:
+        chroma_manager = ChromaManager()
+
         while True:
             title = input("Enter the song title: ").strip()
             if title:
                 break
             print("Please enter a song title.")
-        
+
         artist = input("Enter the artist name (optional, press Enter to skip): ").strip() or None
-        
-        # Fetch lyrics and get the song ID from SenseYourTune database
+
         print(f"\nFetching lyrics...")
         session = get_db_session()
         try:
-            # First check if song exists in SenseYourTune
-            kkbox_artist_name = artist or "Unknown Artist"
-            existing_song = session.query(Song).join(Artist).filter(
-                Song.title == title,
-                Artist.name == kkbox_artist_name
-            ).first()
-            
+            existing_song = session.query(Song).join(Artist).filter(Song.title == title).first()
             if existing_song:
                 print(f"\nFound existing song in SenseYourTune with ID: {existing_song.song_id}")
-                # Check if it exists in ChromaDB
-                if chroma_manager.get_song(str(existing_song.song_id)):
+                song_id = str(existing_song.song_id)
+                if chroma_manager.get_song(song_id):
                     print("Song already exists in ChromaDB. Getting recommendations...")
-                    song_id = str(existing_song.song_id)
+                    recommend(chroma_manager, song_id)
+                    return
                 else:
                     print("Song exists in SenseYourTune but not in ChromaDB. Adding to ChromaDB...")
-                    song_id = str(existing_song.song_id)
             else:
                 print("Song not found in SenseYourTune. Adding new song...")
                 song_id = str(get_next_song_id())
         finally:
             session.close()
-        
-        # Fetch lyrics (this will add/update the song in SenseYourTune)
+
         lyrics = fetch_lyrics(title, artist)
-        
         if not lyrics:
             print("Could not fetch lyrics for this song. Please try another song.")
             return
-        
+
         print("\nLyrics fetched successfully!")
         print("\nLyrics preview:")
         print("-" * 50)
         print(lyrics[:200] + "..." if len(lyrics) > 200 else lyrics)
         print("-" * 50)
-        
-        # Ask user if they want to proceed with these lyrics
-        while True:
-            choice = input("\nDo you want to proceed with these lyrics? (yes/no): ").lower()
-            if choice in ['yes', 'no']:
-                break
-            print("Please enter 'yes' or 'no'.")
-        
-        if choice == 'no':
-            print("Operation cancelled by user.")
-            return
-        
-        # Get additional metadata
-        artist_genre = input("Enter artist genre (optional, press Enter to skip): ").strip() or "Unknown"
-        artist_popularity = input("Enter artist popularity (0-100, optional, press Enter to skip): ").strip()
-        song_popularity = input("Enter song popularity (0-100, optional, press Enter to skip): ").strip()
-        release_date = input("Enter release date (YYYY-MM-DD, optional, press Enter to skip): ").strip()
-        
-        # Convert popularity scores to integers
-        try:
-            artist_popularity = int(artist_popularity) if artist_popularity else 0
-            song_popularity = int(song_popularity) if song_popularity else 0
-        except ValueError:
-            print("Invalid popularity score. Using default value of 0.")
-            artist_popularity = 0
-            song_popularity = 0
-        
-        # Add song to ChromaDB
-        success = chroma_manager.add_song_with_lyrics(
-            song_id=song_id,
-            title=title,
-            artist=artist or "Unknown",
-            lyrics=lyrics
-        )
-        
+
+        success = chroma_manager.add_song_with_lyrics(song_id=song_id, title=title, artist=artist or "Unknown Artist", lyrics=lyrics)
+
         if success:
             print(f"\nSuccessfully added song to ChromaDB with ID: {song_id}")
-            
-            # Get recommendations for the newly added song
             print("\nGetting recommendations for the newly added song...")
-            
-            try:
-                # Generate embedding for lyrics
-                from src.database.embeddings import EmbeddingGenerator
-                embedding_generator = EmbeddingGenerator()
-                embedding = embedding_generator.get_embedding(lyrics)
-                
-                if embedding is None:
-                    print("Failed to generate embedding for recommendations")
-                    return
-                
-                # Normalize embedding
-                embedding = embedding / np.linalg.norm(embedding)
-                
-                # Find similar songs
-                results = chroma_manager.find_similar_songs(
-                    query_embedding=embedding.tolist(),
-                    n_results=6  # Get 5 recommendations + the target song
-                )
-                
-                if results and results.get('ids') and results.get('metadatas'):
-                    # Process and display results
-                    print("\nRecommended Songs:")
-                    print("-" * 100)
-                    print(f"{'Title':<30} {'Artist':<25} {'Genre':<15} {'Similarity':<10} {'YouTube Link':<20}")
-                    print("-" * 100)
-                    
-                    for i, (result_id, distance, metadata) in enumerate(zip(
-                        results['ids'][0],
-                        results['distances'][0],
-                        results['metadatas'][0]
-                    )):
-                        # Skip the target song itself
-                        if result_id == song_id:
-                            continue
-                            
-                        similarity_score = 1 - distance
-                        # Search for YouTube video
-                        video_title, video_url = search_youtube_video(
-                            metadata['title'],
-                            metadata['artist']
-                        )
-                        
-                        print(f"{metadata['title'][:30]:<30} {metadata['artist'][:25]:<25} "
-                              f"{metadata['artist_genre'][:15]:<15} {similarity_score:.3f} {video_url}")
-                        
-                        if video_url:
-                            print(f"   YouTube: {video_title}")
-                            print("-" * 100)
-                        else:
-                            print("   No YouTube video found")
-                            print("-" * 100)
-                else:
-                    print("No similar songs found in the database.")
-                    
-            except Exception as e:
-                print(f"Error getting recommendations: {e}")
+            recommend(chroma_manager, song_id, lyrics)
         else:
             print("\nFailed to add song to ChromaDB")
-        
+
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
     except Exception as e:

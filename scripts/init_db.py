@@ -312,6 +312,11 @@ def populate_top_songs(session, max_songs=50):
                 if not kkbox_data:
                     logger.warning(f"No KKBOX data found for: {song_title} by {artist_name}")
                     continue
+                    
+                # if song already exists, skip
+                if session.query(Song).filter_by(title=song_title, artist_id=artist_name).first():
+                    logger.info(f"Song already exists: {song_title} by {artist_name}")
+                    continue
                 
                 # Get or create artist
                 artist = session.query(Artist).filter_by(name=artist_name).first()
