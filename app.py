@@ -7,7 +7,11 @@ from dotenv import load_dotenv
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 sys.path.insert(0, project_root)
 
-from scripts.main_local import RecommendationService, get_db_session, Song, Artist
+from src.service.recommendations import RecommendationService
+from src.database.chroma.chroma_db import ChromaManager
+from src.utils.config_manager import get_db_session
+from src.database.init_db import Song, Artist
+from src.auth.auth import admin_required
 
 app = Flask(__name__)
 load_dotenv()
@@ -44,11 +48,33 @@ def recommend():
                         'recommendations': recommendations
                     })
                 else:
+                    # Only admins can add new songs to the database
+                    if not request.headers.get('X-API-Key') == os.getenv('ADMIN_API_KEY'):
+                        return jsonify({
+                            'status': 'error',
+                            'message': 'Song not found in database. Only admins can add new songs.',
+                            'recommendations': []
+                        }), 403
                     song_id = str(service.get_next_song_id())
             else:
+                # Only admins can add new songs to the database
+                if not request.headers.get('X-API-Key') == os.getenv('ADMIN_API_KEY'):
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Song not found in database. Only admins can add new songs.',
+                        'recommendations': []
+                    }), 403
                 song_id = str(service.get_next_song_id())
         finally:
             session.close()
+
+        # Only admins can fetch lyrics and add songs
+        if not request.headers.get('X-API-Key') == os.getenv('ADMIN_API_KEY'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Only admins can add new songs to the database.',
+                'recommendations': []
+            }), 403
 
         lyrics = service.fetch_lyrics(title, artist)
         if not lyrics:

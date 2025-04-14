@@ -8,7 +8,16 @@
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
     />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #0f0f0f;
+        color: #ffffff;
+      }
       .loading {
         display: none;
       }
@@ -16,19 +25,24 @@
         display: block;
       }
       .search-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%);
+        border-bottom: 1px solid #303030;
       }
       .song-card {
-        transition: transform 0.3s ease;
+        transition: all 0.3s ease;
+        background: #181818;
+        border-radius: 8px;
       }
       .song-card:hover {
         transform: translateY(-5px);
+        background: #282828;
       }
       .video-container {
         position: relative;
-        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+        padding-bottom: 56.25%;
         height: 0;
         overflow: hidden;
+        border-radius: 8px;
       }
       .video-container iframe {
         position: absolute;
@@ -38,70 +52,92 @@
         height: 100%;
         border: 0;
       }
+      .search-input {
+        background: #121212;
+        border: 1px solid #303030;
+        color: #ffffff;
+      }
+      .search-input:focus {
+        background: #282828;
+        border-color: #3ea6ff;
+      }
+      .search-input::placeholder {
+        color: #aaaaaa;
+      }
     </style>
   </head>
-  <body class="bg-gray-50 min-h-screen">
-    <div class="search-container py-16">
-      <div class="container mx-auto px-4">
-        <div class="max-w-2xl mx-auto text-center">
-          <h1 class="text-4xl font-bold text-white mb-8">
-            Find Your Next Favorite Song
-          </h1>
-          <div class="bg-white rounded-lg shadow-xl p-6">
-            <form id="recommendationForm" class="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  required
-                  placeholder="Enter song title"
-                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition duration-200"
-                />
-              </div>
+  <body>
+    <div class="min-h-screen">
+      <!-- Header -->
+      <div class="search-container py-8">
+        <div class="container mx-auto px-4">
+          <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl font-bold text-center mb-2">
+              Discover Your Next Favorite Song
+            </h1>
 
-              <div>
-                <input
-                  type="text"
-                  id="artist"
-                  name="artist"
-                  placeholder="Enter artist name (optional)"
-                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition duration-200"
-                />
-              </div>
+            <div class="bg-[#181818] rounded-xl p-6 shadow-lg">
+              <form id="recommendationForm" class="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    required
+                    placeholder="Enter song title"
+                    class="search-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] transition duration-200"
+                  />
+                </div>
 
-              <button
-                type="submit"
-                class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200"
-              >
-                Get Recommendations
-              </button>
-            </form>
+                <div>
+                  <input
+                    type="text"
+                    id="artist"
+                    name="artist"
+                    placeholder="Enter artist name (optional)"
+                    class="search-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] transition duration-200"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  class="w-full bg-[#3ea6ff] text-white py-3 px-6 rounded-lg hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] focus:ring-offset-2 focus:ring-offset-[#181818] transition duration-200"
+                >
+                  Get Recommendations
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="container mx-auto px-4 py-12">
-      <div class="loading bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-        <div class="flex items-center justify-center">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"
-          ></div>
-          <span class="ml-2 text-gray-700">Loading recommendations...</span>
+      <!-- Results Section -->
+      <div class="container mx-auto px-4 py-12">
+        <div
+          class="loading bg-[#181818] rounded-lg shadow-md p-6 max-w-4xl mx-auto"
+        >
+          <div class="flex items-center justify-center">
+            <div
+              class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3ea6ff]"
+            ></div>
+            <span class="ml-2 text-gray-400">Loading recommendations...</span>
+          </div>
         </div>
-      </div>
 
-      <div id="results" class="max-w-2xl mx-auto space-y-6">
-        <!-- Recommendations will be inserted here -->
-      </div>
+        <div
+          id="results"
+          class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          <!-- Recommendations will be inserted here -->
+        </div>
 
-      <div
-        id="error"
-        class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden max-w-2xl mx-auto"
-        role="alert"
-      >
-        <span class="block sm:inline" id="errorMessage"></span>
+        <div
+          id="error"
+          class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded relative hidden max-w-4xl mx-auto"
+          role="alert"
+        >
+          <span class="block sm:inline" id="errorMessage"></span>
+        </div>
       </div>
     </div>
 
@@ -123,6 +159,7 @@
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                "X-API-Key": "senseyourtune",
               },
               body: JSON.stringify({ title, artist }),
             });
@@ -134,19 +171,16 @@
                 const resultsContainer = document.getElementById("results");
                 data.recommendations.forEach((rec) => {
                   const recElement = document.createElement("div");
-                  recElement.className =
-                    "song-card bg-white rounded-lg shadow-md p-6 hover:shadow-lg";
+                  recElement.className = "song-card p-4 hover:shadow-lg";
                   recElement.innerHTML = `
                     <div class="flex flex-col space-y-4">
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
-                          <h3 class="text-xl font-semibold text-gray-800 mb-2">${
+                          <h3 class="text-lg font-semibold text-white mb-1">${
                             rec.title
                           }</h3>
-                          <p class="text-gray-600 mb-2">Artist: ${
-                            rec.artist
-                          }</p>
-                          <p class="text-sm text-gray-500">Score: ${rec.weighted_score.toFixed(
+                          <p class="text-gray-400 mb-2">${rec.artist}</p>
+                          <p class="text-sm text-[#3ea6ff]">Score: ${rec.weighted_score.toFixed(
                             3
                           )}</p>
                         </div>
