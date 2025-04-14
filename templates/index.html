@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Song Recommendation System</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .loading {
+        display: none;
+      }
+      .loading.active {
+        display: block;
+      }
+      .search-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .song-card {
+        transition: transform 0.3s ease;
+      }
+      .song-card:hover {
+        transform: translateY(-5px);
+      }
+      .video-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+        height: 0;
+        overflow: hidden;
+      }
+      .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <div class="search-container py-16">
+      <div class="container mx-auto px-4">
+        <div class="max-w-2xl mx-auto text-center">
+          <h1 class="text-4xl font-bold text-white mb-8">
+            Find Your Next Favorite Song
+          </h1>
+          <div class="bg-white rounded-lg shadow-xl p-6">
+            <form id="recommendationForm" class="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  required
+                  placeholder="Enter song title"
+                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition duration-200"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="artist"
+                  name="artist"
+                  placeholder="Enter artist name (optional)"
+                  class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition duration-200"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200"
+              >
+                Get Recommendations
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-12">
+      <div class="loading bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+        <div class="flex items-center justify-center">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"
+          ></div>
+          <span class="ml-2 text-gray-700">Loading recommendations...</span>
+        </div>
+      </div>
+
+      <div id="results" class="max-w-2xl mx-auto space-y-6">
+        <!-- Recommendations will be inserted here -->
+      </div>
+
+      <div
+        id="error"
+        class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden max-w-2xl mx-auto"
+        role="alert"
+      >
+        <span class="block sm:inline" id="errorMessage"></span>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("recommendationForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const title = document.getElementById("title").value;
+          const artist = document.getElementById("artist").value;
+
+          document.querySelector(".loading").classList.add("active");
+          document.getElementById("results").innerHTML = "";
+          document.getElementById("error").classList.add("hidden");
+
+          try {
+            const response = await fetch("/recommend", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ title, artist }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              if (data.recommendations && data.recommendations.length > 0) {
+                const resultsContainer = document.getElementById("results");
+                data.recommendations.forEach((rec) => {
+                  const recElement = document.createElement("div");
+                  recElement.className =
+                    "song-card bg-white rounded-lg shadow-md p-6 hover:shadow-lg";
+                  recElement.innerHTML = `
+                    <div class="flex flex-col space-y-4">
+                      <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                          <h3 class="text-xl font-semibold text-gray-800 mb-2">${
+                            rec.title
+                          }</h3>
+                          <p class="text-gray-600 mb-2">Artist: ${
+                            rec.artist
+                          }</p>
+                          <p class="text-sm text-gray-500">Score: ${rec.weighted_score.toFixed(
+                            3
+                          )}</p>
+                        </div>
+                      </div>
+                      ${
+                        rec.preview_url
+                          ? `
+                        <div class="video-container">
+                          <iframe src="${rec.preview_url}" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                          </iframe>
+                        </div>
+                      `
+                          : ""
+                      }
+                    </div>
+                  `;
+                  resultsContainer.appendChild(recElement);
+                });
+              } else {
+                document.getElementById("errorMessage").textContent =
+                  "No recommendations found.";
+                document.getElementById("error").classList.remove("hidden");
+              }
+            } else {
+              document.getElementById("errorMessage").textContent =
+                data.error || "An error occurred.";
+              document.getElementById("error").classList.remove("hidden");
+            }
+          } catch (error) {
+            document.getElementById("errorMessage").textContent =
+              "An error occurred while fetching recommendations.";
+            document.getElementById("error").classList.remove("hidden");
+          } finally {
+            document.querySelector(".loading").classList.remove("active");
+          }
+        });
+    </script>
+  </body>
+</html>

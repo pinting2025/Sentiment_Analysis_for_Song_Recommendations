@@ -298,17 +298,17 @@ def populate_top_songs(session, max_songs=50):
                     logger.warning(f"Skipping song due to missing title or artist: {song_data}")
                     continue
                 
+                # if song already exists, skip
+                if session.query(Song).filter_by(title=song_title).first():
+                    logger.info(f"Song already exists: {song_title}")
+                    continue
+                
                 # Search for the song on KKBOX
                 logger.info(f"Searching for lyrics: {song_title} by {artist_name}")
                 kkbox_data = kkbox.search_song(song_title, artist_name)
                 
                 if not kkbox_data:
                     logger.warning(f"No KKBOX data found for: {song_title} by {artist_name}")
-                    continue
-                    
-                # if song already exists, skip
-                if session.query(Song).filter_by(title=song_title, artist_id=artist_name).first():
-                    logger.info(f"Song already exists: {song_title} by {artist_name}")
                     continue
                 
                 # Get or create artist

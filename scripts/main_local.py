@@ -46,7 +46,7 @@ def main():
                 song_id = str(existing_song.song_id)
                 if service.song_exists_in_chroma(song_id):
                     print("Song already exists in ChromaDB. Getting recommendations...")
-                    service.get_recommendations_for_song(song_id)
+                    service.get_recommendations_for_song(song_id=song_id, song_title=title)
                     return
                 else:
                     print("Song exists in SenseYourTune but not in ChromaDB. Adding to ChromaDB...")
@@ -72,7 +72,7 @@ def main():
         if success:
             print(f"\nSuccessfully added song to ChromaDB with ID: {song_id}")
             print("\nGetting recommendations for the newly added song...")
-            service.get_recommendations_for_song(song_id, lyrics)
+            service.get_recommendations_for_song(song_id=song_id, song_title=title, lyrics=lyrics)
         else:
             print("\nFailed to add song to ChromaDB")
 

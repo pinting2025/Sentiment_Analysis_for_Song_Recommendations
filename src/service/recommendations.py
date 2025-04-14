@@ -22,6 +22,7 @@ logging.basicConfig(level=logging.INFO)
 class RecommendationService:
     def __init__(self):
         self.chroma_manager = ChromaManager()
+        self.youtube = build('youtube', 'v3', developerKey=os.getenv('YOUTUBE_API_KEY'))
 
     def get_next_song_id(self) -> int:
         session = get_db_session()
@@ -30,6 +31,28 @@ class RecommendationService:
             return (max_id[0] + 1) if max_id else 1
         finally:
             session.close()
+
+    def get_song_preview_url(self, title: str, artist: str) -> Optional[str]:
+        """
+        Get YouTube video preview URL for a song from the database.
+        Returns the video URL if found, None otherwise.
+        """
+        try:
+            session = get_db_session()
+            try:
+                song = session.query(Song).join(Artist).filter(
+                    Song.title == title,
+                    Artist.name == artist
+                ).first()
+                
+                if song and song.youtube_id:
+                    return f"https://www.youtube.com/embed/{song.youtube_id}?autoplay=0&controls=1&showinfo=0&rel=0"
+                return None
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error getting preview URL for {title} by {artist}: {e}")
+            return None
 
     def fetch_lyrics(self, title: str, artist: Optional[str] = None) -> Optional[str]:
         session = get_db_session()
@@ -90,9 +113,8 @@ class RecommendationService:
 
     def search_youtube_video(self, title: str, artist: str) -> Tuple[str, str]:
         try:
-            youtube = build('youtube', 'v3', developerKey=os.getenv('YOUTUBE_API_KEY'))
             query = f"{title} {artist}" if artist != "Unknown" else title
-            response = youtube.search().list(q=query, part='id,snippet', maxResults=1, type='video').execute()
+            response = self.youtube.search().list(q=query, part='id,snippet', maxResults=1, type='video').execute()
 
             if not response.get('items'):
                 return "No video found", ""
@@ -119,7 +141,7 @@ class RecommendationService:
         finally:
             session.close()
 
-    def get_recommendations_for_song(self, song_id: int, lyrics: Optional[str] = None) -> List[Dict]:
+    def get_recommendations_for_song(self, song_id: int, song_title: str, lyrics: Optional[str] = None) -> List[Dict]:
         try:
             from src.database.chroma.embeddings import EmbeddingGenerator
             embedding_generator = EmbeddingGenerator()
@@ -133,27 +155,35 @@ class RecommendationService:
                 embedding = song_data['embedding']
         
             results = self.chroma_manager.find_songs_by_similarity(query_embedding=embedding, top_k=20)
-            print("\nRecommended Songs:")
-            print("-" * 100)
-            print(f"{'Title':<30} {'Artist':<25} {'Similarity':<10} {'YouTube Link':<20}")
-            print("-" * 100)
             
+            # Format recommendations for the frontend
+            formatted_recommendations = []
             count = 0
             for song in results:
                 if song['song_id'] == song_id:
                     continue
+                
+                title_length = len(song_title)
+                if song['title'][:title_length] == song_title:
+                    continue
+                
                 if count >= 5:
                     break
-                similarity_score = song['similarity_score']
-                video_title, video_url = self.search_youtube_video(song['title'], song['artist'])
-                print(f"{song['title'][:30]:<30} {song['artist'][:25]:<25} {similarity_score:.3f} {video_url}")
-                if video_url:
-                    print(f"   YouTube: {video_title}\n{'-' * 100}")
-                else:
-                    print("   No YouTube video found\n" + "-" * 100)
+                
+                # Get preview URL from database
+                preview_url = self.get_song_preview_url(song['title'], song['artist'])
+                
+                # Create recommendation object
+                recommendation = {
+                    'title': song['title'],
+                    'artist': song['artist'],
+                    'weighted_score': song['similarity_score'],
+                    'preview_url': preview_url if preview_url else None
+                }
+                formatted_recommendations.append(recommendation)
                 count += 1
             
-            return results
+            return formatted_recommendations
         
         except Exception as e:
             print(f"Error getting recommendations: {e}")
