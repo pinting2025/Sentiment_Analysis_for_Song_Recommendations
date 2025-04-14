@@ -28,6 +28,7 @@ flask>=2.3.0
 flask-restful>=0.3.10
 flask-sqlalchemy>=3.1.0
 flask-migrate>=4.0.5
+flask-cors>=4.0.0
 
 # API clients
 requests>=2.31.0

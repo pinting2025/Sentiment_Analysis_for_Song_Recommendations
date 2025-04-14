@@ -1,6 +1,6 @@
-# Song Recommender System
+# Sentiment Analysis for Song Recommendations
 
-A song recommendation system that uses semantic analysis of lyrics to find similar songs based on their emotional content and meaning.
+A sophisticated song recommendation system that uses semantic analysis of lyrics to find similar songs based on their emotional content and meaning. The system leverages BERT embeddings and ChromaDB for efficient vector similarity search.
 
 ## Features
 
@@ -9,6 +9,8 @@ A song recommendation system that uses semantic analysis of lyrics to find simil
 - Genre and popularity-based filtering
 - Persistent storage of embeddings
 - REST API for song recommendations
+- Modern web interface for easy interaction
+- Comprehensive test suite
 
 ## Installation
 
@@ -34,23 +36,71 @@ pip install -e .
 
 ## Usage
 
+### Backend Setup
+
 1. Initialize the database:
 
 ```bash
-python scripts/init_db.py
+python src/database/init_db.py
 ```
 
 2. Initialize ChromaDB with song embeddings:
 
 ```bash
-python scripts/init_chroma.py
+python src/database/chroma/init_chroma.py
 ```
 
-3. Get song recommendations:
+### Running the Application
+
+1. Start the backend server:
 
 ```bash
 python scripts/main.py
 ```
+
+2. Access the web interface at `http://localhost:5000`
+
+### Testing
+
+Run the test suite:
+
+```bash
+pytest tests/
+```
+
+For detailed test coverage report:
+
+```bash
+pytest --cov=src tests/
+```
+
+## Project Structure
+
+```
+.
+├── src/                    # Source code
+│   ├── service/           # Business logic
+│   ├── database/          # Database operations
+│   └── utils/             # Utility functions
+├── scripts/               # Scripts and main application
+├── tests/                 # Test suite
+├── data/                  # Data files
+└── requirements.txt       # Project dependencies
+```
+
+## API Endpoints
+
+- `POST /api/recommend` - Get song recommendations
+- `GET /api/songs` - List all songs in the database
+- `POST /api/songs` - Add a new song
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 

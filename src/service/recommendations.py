@@ -10,9 +10,9 @@ from googleapiclient.errors import HttpError
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.database.chroma_db import ChromaManager
+from src.database.chroma.chroma_db import ChromaManager
 from src.utils.config_manager import get_db_session
-from scripts.init_db import Song, Lyrics, Artist
+from src.database.init_db import Song, Lyrics, Artist
 from src.database.kkbox import KKBOXAPI
 
 load_dotenv()
@@ -121,7 +121,7 @@ class RecommendationService:
 
     def get_recommendations_for_song(self, song_id: int, lyrics: Optional[str] = None) -> List[Dict]:
         try:
-            from src.database.embeddings import EmbeddingGenerator
+            from src.database.chroma.embeddings import EmbeddingGenerator
             embedding_generator = EmbeddingGenerator()
             if lyrics:
                 embedding = embedding_generator.get_embedding(lyrics)
@@ -129,7 +129,7 @@ class RecommendationService:
                 song_data = self.chroma_manager.get_song(id=str(song_id))
                 if not song_data:
                     print("Song embedding not found.")
-                    return
+                    return []
                 embedding = song_data['embedding']
         
             results = self.chroma_manager.find_songs_by_similarity(query_embedding=embedding, top_k=20)
@@ -153,8 +153,11 @@ class RecommendationService:
                     print("   No YouTube video found\n" + "-" * 100)
                 count += 1
             
+            return results
+        
         except Exception as e:
             print(f"Error getting recommendations: {e}")
-
+            return []
+        
     def song_exists_in_chroma(self, song_id: str) -> bool:
         return self.chroma_manager.get_song(id=song_id) is not None

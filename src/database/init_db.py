@@ -6,7 +6,8 @@ from sqlalchemy import (
     create_engine, Column, Integer, String, Float, 
     Text, DateTime, ForeignKey, Date, Table, func
 )
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 import datetime
 import os
@@ -14,7 +15,7 @@ import re
 import sys
 
 # Add the project root to Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, project_root)
 
 from src.utils.config_manager import get_db_session

@@ -8,14 +8,14 @@ import random
 from pathlib import Path
 
 # Add the project root to Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 sys.path.insert(0, project_root)
 
-from src.database.embeddings import EmbeddingGenerator
+from src.database.chroma.embeddings import EmbeddingGenerator
 from src.utils.config_manager import get_db_session
-from scripts.init_db import Song, Lyrics, Artist
+from src.database.init_db import Song, Lyrics, Artist
 from src.utils.settings import COLLECTION_NAME, COLLECTION_METADATA, METADATA_FIELDS, CHROMA_DB_PATH
-from src.database.chroma_db import ChromaManager
+from src.database.chroma.chroma_db import ChromaManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -307,7 +307,7 @@ class ChromaManager:
         """
         try:
             # Generate embedding for lyrics
-            from src.database.embeddings import EmbeddingGenerator
+            from src.database.chroma.embeddings import EmbeddingGenerator
             embedding_generator = EmbeddingGenerator()
             embedding = embedding_generator.get_embedding(lyrics)
             
