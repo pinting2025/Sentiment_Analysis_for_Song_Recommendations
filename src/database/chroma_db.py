@@ -11,8 +11,7 @@ sys.path.insert(0, project_root)
 from src.utils.settings import (
     CHROMA_DB_PATH,
     COLLECTION_NAME,
-    COLLECTION_METADATA,
-    METADATA_FIELDS
+    COLLECTION_METADATA
 )
 import logging
 # Configure logging
@@ -301,10 +300,7 @@ class ChromaManager:
             title (str): Song title
             artist (str): Artist name
             lyrics (str): Song lyrics
-            artist_genre (str): Artist genre
-            artist_popularity (int): Artist popularity score (0-100)
             song_popularity (int): Song popularity score (0-100)
-            release_date (Optional[str]): Song release date
             
         Returns:
             bool: True if successful, False otherwise
@@ -326,10 +322,7 @@ class ChromaManager:
             metadata = {
                 "title": str(title),
                 "artist": str(artist),
-                "artist_genre": str(artist_genre),
-                "artist_popularity": int(artist_popularity),
                 "song_popularity": int(song_popularity),
-                "release_date": str(release_date) if release_date else "Unknown",
                 "lyrics": str(lyrics[:1000])  # Store first 1000 chars for reference
             }
             

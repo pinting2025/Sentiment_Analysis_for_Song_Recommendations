@@ -48,8 +48,6 @@ class Artist(Base):
     
     artist_id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
-    popularity = Column(Integer)
-    genre = Column(String(100))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
@@ -68,8 +66,6 @@ class Song(Base):
     title = Column(String(255), nullable=False)
     artist_id = Column(Integer, ForeignKey('artists.artist_id'), nullable=False)
     youtube_id = Column(String(20), unique=True)
-    release_date = Column(Date)
-    # duration = Column(Integer)  # Duration in seconds
     popularity = Column(Integer)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -77,10 +73,6 @@ class Song(Base):
     # Relationships
     artist = relationship("Artist", back_populates="songs")
     lyrics = relationship("Lyrics", back_populates="song", uselist=False)
-    sentiment_analysis = relationship("SentimentAnalysis", back_populates="song", uselist=False)
-    # user_history = relationship("UserHistory", back_populates="song")
-    # user_preferences = relationship("UserPreference", back_populates="song")
-    # tags = relationship("SongTag", back_populates="song")
     
     def __repr__(self):
         return f"<Song(song_id={self.song_id}, title='{self.title}')>"
@@ -104,28 +96,28 @@ class Lyrics(Base):
         return f"<Lyrics(lyrics_id={self.lyrics_id}, song_id={self.song_id})>"
 
 
-class SentimentAnalysis(Base):
-    """SentimentAnalysis model storing NLP analysis results of lyrics."""
-    __tablename__ = 'sentiment_analysis'
+# class SentimentAnalysis(Base):
+#     """SentimentAnalysis model storing NLP analysis results of lyrics."""
+#     __tablename__ = 'sentiment_analysis'
     
-    analysis_id = Column(Integer, primary_key=True)
-    song_id = Column(Integer, ForeignKey('songs.song_id'), nullable=False)
-    positivity = Column(Float)  # Score from 0-1
-    negativity = Column(Float)  # Score from 0-1
-    joy = Column(Float)
-    sadness = Column(Float)
-    anger = Column(Float)
-    fear = Column(Float)
-    surprise = Column(Float)
-    dominant_mood = Column(String(20))
-    word_count = Column(Integer)
-    analyzed_at = Column(DateTime, default=datetime.datetime.utcnow)
+#     analysis_id = Column(Integer, primary_key=True)
+#     song_id = Column(Integer, ForeignKey('songs.song_id'), nullable=False)
+#     positivity = Column(Float)  # Score from 0-1
+#     negativity = Column(Float)  # Score from 0-1
+#     joy = Column(Float)
+#     sadness = Column(Float)
+#     anger = Column(Float)
+#     fear = Column(Float)
+#     surprise = Column(Float)
+#     dominant_mood = Column(String(20))
+#     word_count = Column(Integer)
+#     analyzed_at = Column(DateTime, default=datetime.datetime.utcnow)
     
-    # Relationships
-    song = relationship("Song", back_populates="sentiment_analysis")
+#     # Relationships
+#     song = relationship("Song", back_populates="sentiment_analysis")
     
-    def __repr__(self):
-        return f"<SentimentAnalysis(analysis_id={self.analysis_id}, song_id={self.song_id})>"
+#     def __repr__(self):
+#         return f"<SentimentAnalysis(analysis_id={self.analysis_id}, song_id={self.song_id})>"
 
 
 # class User(Base):
@@ -377,7 +369,6 @@ def get_all_songs():
                 'title': song.title,
                 'artist_name': artist.name,
                 'youtube_id': song.youtube_id,
-                'release_date': song.release_date.isoformat() if song.release_date else None,
                 'popularity': song.popularity
             })
         

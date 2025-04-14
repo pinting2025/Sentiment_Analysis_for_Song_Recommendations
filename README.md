@@ -49,7 +49,7 @@ python scripts/init_chroma.py
 3. Get song recommendations:
 
 ```bash
-python scripts/get_recommendation_user_input.py
+python scripts/main.py
 ```
 
 ## License

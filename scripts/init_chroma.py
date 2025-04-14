@@ -95,10 +95,7 @@ def init_chroma_db(force: bool = False):
                     metadata = {
                         "title": song.title,
                         "artist": artist.name,
-                        "artist_genre": artist.genre or "Unknown",
-                        "artist_popularity": artist.popularity or 0,
                         "song_popularity": song.popularity or 0,
-                        "release_date": str(song.release_date) if song.release_date else None,
                         "lyrics": lyrics.lyrics_text[:1000]
                     }
 
