@@ -1,6 +1,6 @@
 # Sentiment Analysis for Song Recommendations
 
-A sophisticated song recommendation system that uses semantic analysis of lyrics to find similar songs based on their emotional content and meaning. The system leverages BERT embeddings and ChromaDB for efficient vector similarity search.
+A song recommendation system that uses NLP analysis of lyrics to find similar songs based on their emotional content and meaning. The system leverages BERT embeddings and ChromaDB for efficient vector similarity search.
 
 ## Features
 
@@ -55,7 +55,7 @@ python src/database/chroma/init_chroma.py
 1. Start the backend server:
 
 ```bash
-python scripts/main_local.py
+python app.py
 ```
 
 2. Access the web interface at `http://localhost:5000`

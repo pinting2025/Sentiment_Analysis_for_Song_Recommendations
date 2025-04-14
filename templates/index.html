@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Song Recommendation System</title>
+    <title>SenseYourTune - AI Music Recommendations</title>
     <link
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
@@ -12,136 +12,613 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
     <style>
       body {
         font-family: "Inter", sans-serif;
-        background-color: #0f0f0f;
+        background: #0f1219;
         color: #ffffff;
+        min-height: 100vh;
+        overflow-x: hidden;
       }
+
+      .hero-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(45deg, #0f1219 0%, #1a1f2c 100%);
+        z-index: -2;
+      }
+
+      .hero-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('data:image/svg+xml,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="none"/><circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.05)"/></svg>')
+          repeat;
+        z-index: -1;
+        opacity: 0.5;
+      }
+
+      .nav-bar {
+        background: rgba(15, 18, 25, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #ff4b6e 0%, #ff8a8a 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+      }
+
+      .hero-section {
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        padding-top: 80px;
+      }
+
+      .input-container {
+        display: none;
+        margin-top: 2rem;
+      }
+
+      .input-container.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .hero-results {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+        height: 400px;
+        margin: 2rem auto;
+        background: rgba(20, 24, 33, 0.6);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: auto;
+        padding: 1.5rem;
+      }
+
+      .hero-image {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+        height: 400px;
+        margin: 2rem auto;
+        background: rgba(20, 24, 33, 0.6);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+        transform-style: preserve-3d;
+        perspective: 1000px;
+      }
+
+      .visualizer {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        height: 200px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .bar {
+        width: 12px;
+        background: linear-gradient(to top, #ff4b6e, #ff8a8a);
+        border-radius: 6px;
+        animation: equalize 3s infinite ease-in-out;
+      }
+
+      @keyframes equalize {
+        0%,
+        100% {
+          height: 40px;
+        }
+        50% {
+          height: 160px;
+        }
+      }
+
+      .cta-button {
+        background: linear-gradient(135deg, #ff4b6e 0%, #ff8a8a 100%);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+      }
+
+      .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(255, 75, 110, 0.2);
+      }
+
+      .secondary-button {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .secondary-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+      }
+
+      #particles-js {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      .content-wrapper {
+        position: relative;
+        z-index: 1;
+      }
+
       .loading {
         display: none;
       }
       .loading.active {
         display: block;
       }
-      .search-container {
-        background: linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%);
-        border-bottom: 1px solid #303030;
-      }
-      .song-card {
+
+      .feature-card {
+        background: rgba(20, 20, 20, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
         transition: all 0.3s ease;
-        background: #181818;
-        border-radius: 8px;
       }
-      .song-card:hover {
+
+      .feature-card:hover {
         transform: translateY(-5px);
-        background: #282828;
+        background: rgba(30, 30, 30, 0.8);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
       }
-      .video-container {
-        position: relative;
-        padding-bottom: 56.25%;
-        height: 0;
-        overflow: hidden;
-        border-radius: 8px;
+
+      .search-input {
+        background: rgba(20, 20, 20, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+        backdrop-filter: blur(5px);
       }
-      .video-container iframe {
+
+      .search-input:focus {
+        background: rgba(30, 30, 30, 0.8);
+        border-color: #ff4b6e;
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, #ff4b6e 0%, #ff8a8a 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      @media (min-width: 1024px) {
+        .results-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .results-grid > div:nth-last-child(-n + 2) {
+          grid-column: span 1.5;
+        }
+      }
+
+      @media (max-width: 1023px) and (min-width: 768px) {
+        .results-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 767px) {
+        .results-grid {
+          grid-template-columns: 1fr;
+          padding: 1rem;
+        }
+      }
+
+      .music-note {
         position: absolute;
+        font-size: 24px;
+        opacity: 0.6;
+        animation: float 3s infinite ease-in-out;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0deg);
+        }
+        50% {
+          transform: translateY(-20px) rotate(10deg);
+        }
+      }
+
+      .wave-animation {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100px;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          rgba(255, 75, 110, 0.1)
+        );
+        animation: wave 8s infinite linear;
+      }
+
+      @keyframes wave {
+        0% {
+          transform: translateX(0) translateZ(0) scaleY(1);
+        }
+        50% {
+          transform: translateX(-25%) translateZ(0) scaleY(0.8);
+        }
+        100% {
+          transform: translateX(-50%) translateZ(0) scaleY(1);
+        }
+      }
+
+      .loading-animation {
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        border: 0;
+        background: rgba(10, 10, 10, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
       }
-      .search-input {
-        background: #121212;
-        border: 1px solid #303030;
-        color: #ffffff;
+
+      .loading-animation.active {
+        display: flex;
       }
-      .search-input:focus {
-        background: #282828;
-        border-color: #3ea6ff;
+
+      .particle-network {
+        position: relative;
+        width: 100%;
+        height: 100%;
       }
-      .search-input::placeholder {
-        color: #aaaaaa;
+
+      .particle {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background-color: #ff4b6e;
+        border-radius: 50%;
       }
     </style>
   </head>
   <body>
-    <div class="min-h-screen">
-      <!-- Header -->
-      <div class="search-container py-8">
-        <div class="container mx-auto px-4">
-          <div class="max-w-4xl mx-auto">
-            <h1 class="text-4xl font-bold text-center mb-2">
-              Discover Your Next Favorite Song
-            </h1>
+    <div class="hero-background"></div>
+    <div class="hero-overlay"></div>
 
-            <div class="bg-[#181818] rounded-xl p-6 shadow-lg">
-              <form id="recommendationForm" class="space-y-4">
-                <div>
-                  <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    required
-                    placeholder="Enter song title"
-                    class="search-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] transition duration-200"
-                  />
-                </div>
+    <nav class="nav-bar fixed w-full top-0 z-50 py-4">
+      <div class="container mx-auto px-6 flex justify-between items-center">
+        <div class="logo-section">
+          <div class="logo-icon">♪</div>
+          <div class="text-2xl font-bold gradient-text">SenseYourTune</div>
+        </div>
+        <div class="flex items-center space-x-8">
+          <a
+            href="#recommendation-form"
+            class="text-gray-300 hover:text-white transition-colors"
+            >Get Started</a
+          >
+          <a
+            href="#features"
+            class="text-gray-300 hover:text-white transition-colors"
+            >Features</a
+          >
+        </div>
+      </div>
+    </nav>
 
-                <div>
-                  <input
-                    type="text"
-                    id="artist"
-                    name="artist"
-                    placeholder="Enter artist name (optional)"
-                    class="search-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] transition duration-200"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  class="w-full bg-[#3ea6ff] text-white py-3 px-6 rounded-lg hover:bg-[#1a73e8] focus:outline-none focus:ring-2 focus:ring-[#3ea6ff] focus:ring-offset-2 focus:ring-offset-[#181818] transition duration-200"
-                >
-                  Get Recommendations
+    <section class="hero-section flex items-center justify-center min-h-screen">
+      <div class="hero-content w-full">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center max-w-7xl mx-auto"
+          >
+            <div class="text-center lg:text-left" data-aos="fade-right">
+              <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
+                Sense Your Tune
+                <span class="gradient-text block mt-2">Music Recommender</span>
+              </h1>
+              <p class="text-lg sm:text-xl text-gray-400 mb-8">
+                Discover music that captures the emotion and meaning behind the
+                songs you love.
+              </p>
+              <div
+                id="tryItButton"
+                class="flex justify-center lg:justify-start gap-4"
+              >
+                <button class="cta-button" onclick="toggleInputForm()">
+                  Try it Now
                 </button>
-              </form>
+              </div>
+
+              <div
+                id="inputForm"
+                class="input-container max-w-md mx-auto lg:mx-0"
+              >
+                <form id="recommendationForm" class="space-y-4">
+                  <div>
+                    <input
+                      type="text"
+                      id="title"
+                      name="title"
+                      required
+                      placeholder="Song Title"
+                      class="search-input w-full px-6 py-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4b6e] transition duration-200 text-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      id="artist"
+                      name="artist"
+                      placeholder="Artist Name (Optional)"
+                      class="search-input w-full px-6 py-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff4b6e] transition duration-200 text-lg"
+                    />
+                  </div>
+
+                  <button type="submit" class="cta-button w-full">
+                    Generate Recommendations
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div
+              class="hero-results max-w-lg mx-auto lg:mx-0"
+              data-aos="fade-left"
+              id="heroResults"
+            >
+              <!-- Initial message -->
+              <div class="text-center text-gray-400 mt-8">
+                Enter a song to get personalized recommendations
+              </div>
             </div>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Results Section -->
-      <div class="container mx-auto px-4 py-12">
-        <div
-          class="loading bg-[#181818] rounded-lg shadow-md p-6 max-w-4xl mx-auto"
-        >
-          <div class="flex items-center justify-center">
+    <div id="particles-js"></div>
+    <div class="wave-animation"></div>
+
+    <div class="content-wrapper">
+      <!-- Features Section -->
+      <section id="features" class="py-20">
+        <div class="container mx-auto px-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div
-              class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3ea6ff]"
-            ></div>
-            <span class="ml-2 text-gray-400">Loading recommendations...</span>
+              class="feature-card p-6"
+              data-aos="fade-up"
+              data-aos-delay="100"
+            >
+              <div class="text-[#ff4b6e] text-4xl mb-4">🎵</div>
+              <h3 class="text-xl font-semibold mb-2">Smart Analysis</h3>
+              <p class="text-gray-400">
+                Advanced AI algorithms analyze song patterns and emotions
+              </p>
+            </div>
+            <div
+              class="feature-card p-6"
+              data-aos="fade-up"
+              data-aos-delay="200"
+            >
+              <div class="text-[#ff4b6e] text-4xl mb-4">🎧</div>
+              <h3 class="text-xl font-semibold mb-2">Personalized Results</h3>
+              <p class="text-gray-400">
+                Get recommendations tailored to your music taste
+              </p>
+            </div>
+            <div
+              class="feature-card p-6"
+              data-aos="fade-up"
+              data-aos-delay="300"
+            >
+              <div class="text-[#ff4b6e] text-4xl mb-4">⚡</div>
+              <h3 class="text-xl font-semibold mb-2">Instant Discovery</h3>
+              <p class="text-gray-400">
+                Find new music in seconds with our powerful engine
+              </p>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div
-          id="results"
-          class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          <!-- Recommendations will be inserted here -->
+      <!-- Results Section -->
+      <section id="results-section" class="py-20">
+        <div class="container mx-auto px-6">
+          <div id="results" class="results-grid">
+            <!-- Results will be inserted here -->
+          </div>
+
+          <div
+            id="error"
+            class="bg-red-900/50 border border-red-700 text-red-200 px-6 py-4 rounded-lg relative hidden max-w-4xl mx-auto backdrop-blur-sm"
+            role="alert"
+          >
+            <span class="block sm:inline" id="errorMessage"></span>
+          </div>
         </div>
+      </section>
 
-        <div
-          id="error"
-          class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded relative hidden max-w-4xl mx-auto"
-          role="alert"
-        >
-          <span class="block sm:inline" id="errorMessage"></span>
+      <!-- Loading Animation -->
+      <div class="loading-animation" id="loadingAnimation">
+        <div class="particle-network" id="particleNetwork">
+          <!-- Particles will be generated here -->
+        </div>
+        <div class="text-center">
+          <h2 class="text-3xl font-bold mb-4 gradient-text">
+            Analyzing Your Music
+          </h2>
+          <p class="text-gray-400">Discovering perfect matches for you...</p>
         </div>
       </div>
     </div>
 
     <script>
+      // Initialize AOS
+      AOS.init({
+        duration: 800,
+        once: true,
+      });
+
+      // Initialize particles.js with larger particles
+      particlesJS("particles-js", {
+        particles: {
+          number: {
+            value: 60,
+            density: {
+              enable: true,
+              value_area: 1000,
+            },
+          },
+          color: {
+            value: "#ff4b6e",
+          },
+          shape: {
+            type: ["circle", "triangle"],
+          },
+          opacity: {
+            value: 0.6,
+            random: true,
+          },
+          size: {
+            value: 6,
+            random: true,
+            anim: {
+              enable: true,
+              speed: 3,
+              size_min: 3,
+              sync: false,
+            },
+          },
+          line_linked: {
+            enable: true,
+            distance: 180,
+            color: "#ff4b6e",
+            opacity: 0.3,
+            width: 2,
+          },
+          move: {
+            enable: true,
+            speed: 2,
+            direction: "none",
+            random: true,
+            straight: false,
+            out_mode: "out",
+            bounce: false,
+            attract: {
+              enable: true,
+              rotateX: 600,
+              rotateY: 1200,
+            },
+          },
+        },
+        interactivity: {
+          detect_on: "canvas",
+          events: {
+            onhover: {
+              enable: true,
+              mode: "grab",
+            },
+            onclick: {
+              enable: true,
+              mode: "push",
+            },
+            resize: true,
+          },
+          modes: {
+            grab: {
+              distance: 200,
+              line_linked: {
+                opacity: 0.8,
+              },
+            },
+            push: {
+              particles_nb: 3,
+            },
+          },
+        },
+        retina_detect: true,
+      });
+
+      function toggleInputForm() {
+        const inputForm = document.getElementById("inputForm");
+        const tryItButton = document.getElementById("tryItButton");
+        inputForm.classList.add("active");
+        tryItButton.style.display = "none";
+      }
+
       document
         .getElementById("recommendationForm")
         .addEventListener("submit", async (e) => {
@@ -149,9 +626,12 @@
 
           const title = document.getElementById("title").value;
           const artist = document.getElementById("artist").value;
+          const loadingAnimation = document.getElementById("loadingAnimation");
+          const heroResults = document.getElementById("heroResults");
 
-          document.querySelector(".loading").classList.add("active");
-          document.getElementById("results").innerHTML = "";
+          loadingAnimation.classList.add("active");
+          heroResults.innerHTML =
+            '<div class="text-center"><p class="text-gray-400">Searching for recommendations...</p></div>';
           document.getElementById("error").classList.add("hidden");
 
           try {
@@ -168,57 +648,80 @@
 
             if (response.ok) {
               if (data.recommendations && data.recommendations.length > 0) {
+                // Update hero results section
+                heroResults.innerHTML = "";
+                data.recommendations.slice(0, 3).forEach((rec, index) => {
+                  const recElement = createResultCard(rec, index);
+                  heroResults.appendChild(recElement);
+                });
+
+                // Update main results section
                 const resultsContainer = document.getElementById("results");
-                data.recommendations.forEach((rec) => {
-                  const recElement = document.createElement("div");
-                  recElement.className = "song-card p-4 hover:shadow-lg";
-                  recElement.innerHTML = `
-                    <div class="flex flex-col space-y-4">
-                      <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                          <h3 class="text-lg font-semibold text-white mb-1">${
-                            rec.title
-                          }</h3>
-                          <p class="text-gray-400 mb-2">${rec.artist}</p>
-                          <p class="text-sm text-[#3ea6ff]">Score: ${rec.weighted_score.toFixed(
-                            3
-                          )}</p>
-                        </div>
-                      </div>
-                      ${
-                        rec.preview_url
-                          ? `
-                        <div class="video-container">
-                          <iframe src="${rec.preview_url}" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                          </iframe>
-                        </div>
-                      `
-                          : ""
-                      }
-                    </div>
-                  `;
+                resultsContainer.innerHTML = "";
+                data.recommendations.forEach((rec, index) => {
+                  const recElement = createResultCard(rec, index);
                   resultsContainer.appendChild(recElement);
                 });
+
+                // Refresh AOS
+                AOS.refresh();
               } else {
-                document.getElementById("errorMessage").textContent =
-                  "No recommendations found.";
+                heroResults.innerHTML =
+                  '<div class="text-center"><p class="text-red-400">No recommendations found.</p></div>';
                 document.getElementById("error").classList.remove("hidden");
               }
             } else {
-              document.getElementById("errorMessage").textContent =
-                data.error || "An error occurred.";
+              heroResults.innerHTML =
+                '<div class="text-center"><p class="text-red-400">An error occurred.</p></div>';
               document.getElementById("error").classList.remove("hidden");
             }
           } catch (error) {
-            document.getElementById("errorMessage").textContent =
-              "An error occurred while fetching recommendations.";
+            heroResults.innerHTML =
+              '<div class="text-center"><p class="text-red-400">An error occurred while fetching recommendations.</p></div>';
             document.getElementById("error").classList.remove("hidden");
           } finally {
-            document.querySelector(".loading").classList.remove("active");
+            loadingAnimation.classList.remove("active");
           }
         });
+
+      function createResultCard(rec, index) {
+        const recElement = document.createElement("div");
+        recElement.className = "feature-card p-6";
+        recElement.setAttribute("data-aos", "fade-up");
+        recElement.setAttribute("data-aos-delay", (index * 100).toString());
+        recElement.innerHTML = `
+          <div class="flex flex-col space-y-4">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <h3 class="text-xl font-semibold text-white mb-2">${
+                  rec.title
+                }</h3>
+                <p class="text-gray-400 mb-3">${rec.artist}</p>
+                <div class="flex items-center">
+                  <span class="text-2xl mr-2">♪</span>
+                  <p class="text-sm text-[#ff4b6e]">Match Score: ${rec.weighted_score.toFixed(
+                    5
+                  )}</p>
+                </div>
+              </div>
+            </div>
+            ${
+              rec.preview_url
+                ? `
+              <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
+                <iframe src="${rec.preview_url}" 
+                  class="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowfullscreen>
+                </iframe>
+              </div>
+            `
+                : ""
+            }
+          </div>
+        `;
+        return recElement;
+      }
     </script>
   </body>
 </html>
