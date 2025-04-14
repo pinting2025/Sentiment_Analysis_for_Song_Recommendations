@@ -146,9 +146,17 @@ def get_popular_music_videos(max_results=50, region_code="SG", language="zh_TW")
                     artist_name = snippet.get("channelTitle", "")
                     song_title = snippet.get("title", "")
                 
+                import re
+                # Remove the parentheses and everything inside them
+                song_title = re.sub(r'\s*\(.*?\)', '', song_title).strip()
+                song_title = re.sub(r'\s*\（.*?\）', '', song_title).strip()
+                
+                artist_name = re.sub(r'\s*\(.*?\)', '', artist_name).strip()
+                artist_name = re.sub(r'\s*\（.*?\）', '', artist_name).strip()
+                
                 results.append({
                     "videoId": video_id,
-                    "title": song_title.split('(')[0].strip(),
+                    "title": song_title,
                     "channelTitle": artist_name,  # Using artist name as channel title
                     "publishedAt": snippet.get("publishedAt", ""),
                     "viewCount": int(statistics.get("viewCount", 0)),

@@ -138,6 +138,10 @@ class KKBOXAPI:
                         if lyrics:
                             # Clean up the lyrics text
                             lyrics = lyrics.replace('\\n', '\n').strip()
+                            import re
+                            lyrics = re.sub(r'[*＊★☆]+', '', lyrics).strip()
+                            lyrics = re.sub(r'\s*前奏\s*', '', lyrics).strip()
+                            lyrics = re.sub(r'^(編曲|作詞|作曲)\s*：.*', '', lyrics) 
                             return lyrics
                 except json.JSONDecodeError:
                     continue

@@ -1,11 +1,11 @@
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import chromadb
 from chromadb.config import Settings
 import numpy as np
 import sys
 import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.insert(0, project_root)
 
 from src.utils.settings import (
@@ -31,15 +31,20 @@ class ChromaManager:
             collection_name (str): Name of the collection to use
             collection_metadata (Dict, optional): Metadata for the collection
         """
-        self.db_path = CHROMA_DB_PATH
         self.collection_name = COLLECTION_NAME
-        self.collection_metadata = COLLECTION_METADATA or {}
+        # Convert Path to string and ensure it exists
+        self.persist_directory = str(CHROMA_DB_PATH)
+        os.makedirs(self.persist_directory, exist_ok=True)
         
-        # Ensure the directory exists
-        os.makedirs(CHROMA_DB_PATH, exist_ok=True)
-        
-        # Initialize client
-        self.client = chromadb.PersistentClient(path=str(CHROMA_DB_PATH))
+        # Initialize ChromaDB client with proper settings
+        self.client = chromadb.PersistentClient(
+            path=self.persist_directory,
+            settings=Settings(
+                anonymized_telemetry=False,
+                allow_reset=True,
+                is_persistent=True
+            )
+        )
         
         # Get or create collection
         self.collection = self._get_or_create_collection()
@@ -47,16 +52,19 @@ class ChromaManager:
     def _get_or_create_collection(self):
         """Get existing collection or create a new one."""
         try:
+            # Try to get existing collection
             collection = self.client.get_collection(self.collection_name)
             logger.info(f"Using existing collection: {self.collection_name}")
-        except ValueError:
+            return collection
+        except Exception as e:
+            # If collection doesn't exist, create a new one
+            logger.info(f"Collection {self.collection_name} not found. Creating new collection...")
             collection = self.client.create_collection(
                 name=self.collection_name,
-                metadata=self.collection_metadata
+                metadata=COLLECTION_METADATA
             )
             logger.info(f"Created new collection: {self.collection_name}")
-        
-        return collection
+            return collection
     
     def add_song(
         self, 

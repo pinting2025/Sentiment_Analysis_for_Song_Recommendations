@@ -55,7 +55,7 @@ python src/database/chroma/init_chroma.py
 1. Start the backend server:
 
 ```bash
-python scripts/main.py
+python scripts/main_local.py
 ```
 
 2. Access the web interface at `http://localhost:5000`
